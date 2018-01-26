@@ -17,3 +17,11 @@ config :twsc_skill, TwscSkill.Repo,
   database: "twsc_skill_test",
   hostname: "localhost",
   pool: Ecto.Adapters.SQL.Sandbox
+
+config :oauth2_server, Oauth2Server.Repo,
+  adapter: Ecto.Adapters.Postgres,
+  username: "postgres",
+  password: "postgres",
+  database: "tradewinds_alexa_dev",
+  hostname: "localhost",
+  pool_size: 10

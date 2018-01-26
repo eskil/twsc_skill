@@ -346,3 +346,125 @@ index b16d86c..69f86b4 100644
    end
  end
 ```
+
+### Add deps
+
+We need 3 libraries for the alexa hookup.
+
+   * [`col/alexa`](https://github.com/col/alexa), support for implementing alexa skills
+   * [`col/alexa_verifier`](https://github.com/col/alexa_verifier), library to verify the cert on requests for you skill
+   * [`col/oauth2_server`](https://github.com/col/oauth2_server), Oauth2 server for Phoenix for Alexa skill authorisation
+
+NOTE: `alexa_verifier` and `oauth2_server` from `col` are using older
+versions of `plug`, so I'm using my fork that updates deps for now.
+
+```diff
+diff --git a/mix.exs b/mix.exs
+index 6483457..7d5f353 100644
+--- a/mix.exs
++++ b/mix.exs
+@@ -40,7 +40,10 @@ defmodule TwscSkill.Mixfile do
+       {:phoenix_html, "~> 2.10"},
+       {:phoenix_live_reload, "~> 1.0", only: :dev},
+       {:gettext, "~> 0.11"},
+-      {:cowboy, "~> 1.0"}
++      {:cowboy, "~> 1.0"},
++      {:alexa, github: "col/alexa"},
++      {:alexa_verifier, github: "eskil/alexa_verifier"},
++      {:oauth2_server, github: "eskil/oauth2_server"}
+     ]
+   end
+
+```
+
+Now to compile these, you need to add configuration statements for
+`oauth2_server` and `alexa_verifier`, otherwise you'll get errors like
+
+```
+== Compilation error in file lib/oauth2_server/repo.ex ==
+** (ArgumentError) missing :adapter configuration in config :oauth2_server, Oauth2Server.Repo
+    lib/ecto/repo/supervisor.ex:70: Ecto.Repo.Supervisor.compile_config/2
+    lib/oauth2_server/repo.ex:2: (module)
+    (stdlib) erl_eval.erl:670: :erl_eval.do_apply/6
+```
+
+So add the following to your config files in `config/`
+
+```diff
+diff --git a/config/config.exs b/config/config.exs
+index 11b9b85..383eb3b 100644
+--- a/config/config.exs
++++ b/config/config.exs
+@@ -22,6 +22,13 @@ config :logger, :console,
+   format: "$time $metadata[$level] $message\n",
+   metadata: [:request_id]
+
++config :oauth2_server, Oauth2Server.Settings,
++  access_token_expiration: 3600,
++  refresh_token_expiration: 3600
++
++config :alexa_verifier,
++  verifier_client: AlexaVerifier.VerifierClient
++
+ # Import environment specific config. This must remain at the bottom
+ # of this file so it overrides the configuration defined above.
+ import_config "#{Mix.env}.exs"
+```
+
+```diff
+diff --git a/config/dev.exs b/config/dev.exs
+index 6c17696..7e6c037 100644
+--- a/config/dev.exs
++++ b/config/dev.exs
+@@ -56,3 +56,11 @@ config :twsc_skill, TwscSkill.Repo,
+   database: "twsc_skill_dev",
+   hostname: "localhost",
+   pool_size: 10
++
++config :oauth2_server, Oauth2Server.Repo,
++  adapter: Ecto.Adapters.Postgres,
++  username: "postgres",
++  password: "postgres",
++  database: "twsc_skill_dev",
++  hostname: "localhost",
++  pool_size: 10
+```
+
+```diff
+diff --git a/config/prod.exs b/config/prod.exs
+index 580b415..0acbe70 100644
+--- a/config/prod.exs
++++ b/config/prod.exs
+@@ -59,6 +59,12 @@ config :logger, level: :info
+ #     config :twsc_skill, TwscSkillWeb.Endpoint, server: true
+ #
+
++config :oauth2_server, Oauth2Server.Repo,
++  adapter: Ecto.Adapters.Postgres,
++  url: System.get_env("DATABASE_URL"),
++  pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
++  ssl: true
++
+ # Finally import the config/prod.secret.exs
+ # which should be versioned separately.
+ import_config "prod.secret.exs"
+```
+
+```diff
+diff --git a/config/test.exs b/config/test.exs
+index bccfb6e..2cd5c18 100644
+--- a/config/test.exs
++++ b/config/test.exs
+@@ -17,3 +17,11 @@ config :twsc_skill, TwscSkill.Repo,
+   database: "twsc_skill_test",
+   hostname: "localhost",
+   pool: Ecto.Adapters.SQL.Sandbox
++
++config :oauth2_server, Oauth2Server.Repo,
++  adapter: Ecto.Adapters.Postgres,
++  username: "postgres",
++  password: "postgres",
++  database: "twsc_skill_dev",
++  hostname: "localhost",
++  pool_size: 10
+```

@@ -56,3 +56,11 @@ config :twsc_skill, TwscSkill.Repo,
   database: "twsc_skill_dev",
   hostname: "localhost",
   pool_size: 10
+
+config :oauth2_server, Oauth2Server.Repo,
+  adapter: Ecto.Adapters.Postgres,
+  username: "postgres",
+  password: "postgres",
+  database: "tradewinds_alexa_dev",
+  hostname: "localhost",
+  pool_size: 10

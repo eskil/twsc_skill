@@ -40,7 +40,10 @@ defmodule TwscSkill.Mixfile do
       {:phoenix_html, "~> 2.10"},
       {:phoenix_live_reload, "~> 1.0", only: :dev},
       {:gettext, "~> 0.11"},
-      {:cowboy, "~> 1.0"}
+      {:cowboy, "~> 1.0"},
+      {:alexa, github: "col/alexa"},
+      {:alexa_verifier, github: "eskil/alexa_verifier"},
+      {:oauth2_server, github: "eskil/oauth2_server"}
     ]
   end
 
