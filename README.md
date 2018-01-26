@@ -484,3 +484,81 @@ index bccfb6e..2cd5c18 100644
 +  hostname: "localhost",
 +  pool_size: 10
 ```
+
+### Let's add Sentry
+
+If you want extra error reporting etc, create a sentry org/project and get the `SENTRY_DSN`.
+
+```sh
+heroku config:set SENTRY_DSN="<sentry dsn>"
+```
+
+Add the dependency
+
+```diff
+diff --git a/mix.exs b/mix.exs
+index 7d5f353..61abc49 100644
+--- a/mix.exs
++++ b/mix.exs
+@@ -20,7 +20,7 @@ defmodule TwscSkill.Mixfile do
+   def application do
+     [
+       mod: {TwscSkill.Application, []},
+-      extra_applications: [:logger, :runtime_tools]
++      extra_applications: [:sentry, :logger, :runtime_tools]
+     ]
+   end
+
+@@ -41,6 +41,7 @@ defmodule TwscSkill.Mixfile do
+       {:phoenix_live_reload, "~> 1.0", only: :dev},
+       {:gettext, "~> 0.11"},
+       {:cowboy, "~> 1.0"},
++      {:sentry, "~> 6.0.0"}
+       {:alexa, github: "col/alexa"},
+       {:alexa_verifier, github: "eskil/alexa_verifier"},
+       {:oauth2_server, github: "eskil/oauth2_server"}
+```
+
+Add the plugs to the router and a test endpoint so we can verify it works.
+
+```diff
+diff --git a/lib/twsc_skill_web/router.ex b/lib/twsc_skill_web/router.ex
+index ff1cce9..8bc8844 100644
+--- a/lib/twsc_skill_web/router.ex
++++ b/lib/twsc_skill_web/router.ex
+@@ -1,5 +1,7 @@
+ defmodule TwscSkillWeb.Router do
+   use TwscSkillWeb, :router
++  use Plug.ErrorHandler
++  use Sentry.Plug
+
+   pipeline :browser do
+     plug :accepts, ["html"]
+@@ -20,6 +22,7 @@ defmodule TwscSkillWeb.Router do
+     get "/privacy", PageController, :privacy
+     get "/terms", PageController, :terms
+     get "/contact", PageController, :contact
++    get "/test_crash", PageController, :test_crash
+   end
+
+   # Other scopes may use custom stacks.
+```
+
+```diff
+diff --git a/lib/twsc_skill_web/controllers/page_controller.ex b/lib/twsc_skill_web/controllers/page_
+index b5cbc3e..f844c75 100644
+--- a/lib/twsc_skill_web/controllers/page_controller.ex
++++ b/lib/twsc_skill_web/controllers/page_controller.ex
+@@ -16,4 +16,11 @@ defmodule TwscSkillWeb.PageController do
+   def contact(conn, _params) do
+     render conn, "contact.html"
+   end
++
++  def test_crash(conn, _params) do
++    # Intentionally crash so we can verify sentry alerts work.
++    a = 1
++    ^a = 2
++    render conn, "index.html"
++  end
+ end
+```
