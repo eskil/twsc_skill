@@ -388,7 +388,7 @@ Now to compile these, you need to add configuration statements for
     (stdlib) erl_eval.erl:670: :erl_eval.do_apply/6
 ```
 
-So add the following to your config files in `config/`
+So add the following to your config files in `config/`.
 
 ```diff
 diff --git a/config/config.exs b/config/config.exs
@@ -430,24 +430,26 @@ index 6c17696..7e6c037 100644
 +  pool_size: 10
 ```
 
+Note in `prod.exs`, we remove the `prod.secret.exs` include. See
+https://hexdocs.pm/phoenix/heroku.html for details.
+
 ```diff
 diff --git a/config/prod.exs b/config/prod.exs
-index 580b415..0acbe70 100644
+index 580b415..c242116 100644
 --- a/config/prod.exs
 +++ b/config/prod.exs
-@@ -59,6 +59,12 @@ config :logger, level: :info
+@@ -59,6 +59,8 @@ config :logger, level: :info
  #     config :twsc_skill, TwscSkillWeb.Endpoint, server: true
  #
 
+-# Finally import the config/prod.secret.exs
+-# which should be versioned separately.
+-import_config "prod.secret.exs"
 +config :oauth2_server, Oauth2Server.Repo,
 +  adapter: Ecto.Adapters.Postgres,
 +  url: System.get_env("DATABASE_URL"),
 +  pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
 +  ssl: true
-+
- # Finally import the config/prod.secret.exs
- # which should be versioned separately.
- import_config "prod.secret.exs"
 ```
 
 ```diff
