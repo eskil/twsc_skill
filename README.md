@@ -487,10 +487,34 @@ index bccfb6e..2cd5c18 100644
 
 ### Let's add Sentry
 
-If you want extra error reporting etc, create a sentry org/project and get the `SENTRY_DSN`.
+If you want extra error reporting etc, create a sentry org/project or add Sentry as an add-on.
 
+Get the DSN from Sentry, under Settings/Client Keys (DSN).
 ```sh
 heroku config:set SENTRY_DSN="<sentry dsn>"
+```
+
+Modify the production config to use this env.
+
+```diff
+diff --git a/config/prod.exs b/config/prod.exs
+index ddd2e9c..a2599f8 100644
+--- a/config/prod.exs
++++ b/config/prod.exs
+@@ -77,3 +77,13 @@ config :oauth2_server, Oauth2Server.Repo,
+   url: System.get_env("DATABASE_URL"),
+   pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
+   ssl: true
++
++config :sentry,
++  dsn: System.get_env("SENTRY_DSN"),
++  environment_name: :prod,
++  enable_source_code_context: true,
++  root_source_code_path: File.cwd!,
++  tags: %{
++    env: "production"
++  },
++  included_environments: [:prod]
 ```
 
 Add the dependency
