@@ -513,7 +513,7 @@ index 7d5f353..61abc49 100644
        {:phoenix_live_reload, "~> 1.0", only: :dev},
        {:gettext, "~> 0.11"},
        {:cowboy, "~> 1.0"},
-+      {:sentry, "~> 6.0.0"}
++      {:sentry, "~> 6.0.0"},
        {:alexa, github: "col/alexa"},
        {:alexa_verifier, github: "eskil/alexa_verifier"},
        {:oauth2_server, github: "eskil/oauth2_server"}
