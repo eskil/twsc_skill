@@ -90,7 +90,13 @@ git add *
 git commit -m "Initial commit"
 git remote add origin git@github.com:eskil/twsc_skill.git
 git push origin master
- ```
+```
+
+Remember to create the `_dev` db in postgres
+
+```sh
+$ createdb twsc_skill_dev
+```
 
 Create a heroku app and hook it up. I'm not going to go too much into
 this, since https://hexdocs.pm/phoenix/heroku.html#content is
