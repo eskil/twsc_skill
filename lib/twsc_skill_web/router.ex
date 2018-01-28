@@ -23,6 +23,8 @@ defmodule TwscSkillWeb.Router do
     get "/terms", PageController, :terms
     get "/contact", PageController, :contact
     get "/test_crash", PageController, :test_crash
+
+    resources "/users", UserController
   end
 
   # Other scopes may use custom stacks.
