@@ -2,7 +2,19 @@
 
 Amazon Alexa skill for access Tradewinds Sailing School & Club reservation system
 
+This is a reverse engineering of
+https://github.com/col/river_place_app. `col` has written some great
+alexa integration packages for elixir, and `river_place_app` is very
+similar in functionality to what I wan't to build. So working through
+his work and upgrading for newer releases of Phoenix was a good
+learning exercise.
+
 ## Create Amazon Skill
+
+I won't go into details on this, since the Amazon Developer site
+covers everything you need. This list simply just has the basics of
+the options I picked to support a web app running on heroku with auth
+instead of the other options.
 
   * Skill information
     * Skill type, "Custom Interaction Model"
@@ -23,7 +35,8 @@ Amazon Alexa skill for access Tradewinds Sailing School & Club reservation syste
     * Pick "My development endpoint is a sub-domain of a domain that has a wildcard certificate from a certificate authority"
     
 
-Example interaction model code.
+Example interaction model code that I ended up with for my initial
+test. You should use the Skill Builder to create you own.
 
   ```json
   {
@@ -585,4 +598,40 @@ index b5cbc3e..f844c75 100644
 +    render conn, "index.html"
 +  end
  end
+```
+
+### Create a user model.
+
+To access TWSC, I need the users name and login, and unfortunately,
+like `river_place_app`, I need to store the users TWSC credentials in
+clear text so I can login on their behalf. Big security no-no, but
+since I can't change TWSC's site, that's how we'll do it.
+
+In addition to TWSC credentials, I'll add name, email and a
+`twsc_skill` password (stored encrypted). This is common good
+practice, and also for the case where the user changes their TWSC
+password.
+
+```sh
+mix phx.gen.html Accounts User users \
+  name:string email:string password:string \
+  twsc_login:string twsc_password:string
+```
+
+This generates most of what we need, so we check in the new files and add the resource to our router.
+
+```diff
+diff --git a/lib/twsc_skill_web/router.ex b/lib/twsc_skill_web/router.ex
+index 8bc8844..93fab63 100644
+--- a/lib/twsc_skill_web/router.ex
++++ b/lib/twsc_skill_web/router.ex
+@@ -23,6 +23,8 @@ defmodule TwscSkillWeb.Router do
+     get "/terms", PageController, :terms
+     get "/contact", PageController, :contact
+     get "/test_crash", PageController, :test_crash
++
++    resources "/users", UserController
+   end
+
+   # Other scopes may use custom stacks.
 ```
