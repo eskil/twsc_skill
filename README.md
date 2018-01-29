@@ -2,19 +2,7 @@
 
 Amazon Alexa skill for access Tradewinds Sailing School & Club reservation system
 
-This is a reverse engineering of
-https://github.com/col/river_place_app. `col` has written some great
-alexa integration packages for elixir, and `river_place_app` is very
-similar in functionality to what I wan't to build. So working through
-his work and upgrading for newer releases of Phoenix was a good
-learning exercise.
-
 ## Create Amazon Skill
-
-I won't go into details on this, since the Amazon Developer site
-covers everything you need. This list simply just has the basics of
-the options I picked to support a web app running on heroku with auth
-instead of the other options.
 
   * Skill information
     * Skill type, "Custom Interaction Model"
@@ -35,8 +23,7 @@ instead of the other options.
     * Pick "My development endpoint is a sub-domain of a domain that has a wildcard certificate from a certificate authority"
 
 
-Example interaction model code that I ended up with for my initial
-test. You should use the Skill Builder to create you own.
+Example interaction model code.
 
   ```json
   {
