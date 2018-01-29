@@ -33,7 +33,7 @@ instead of the other options.
     * Privacy Policy URL, https://<heroku-app>.herokuapp.com/policy
   * SSL Certificate
     * Pick "My development endpoint is a sub-domain of a domain that has a wildcard certificate from a certificate authority"
-    
+
 
 Example interaction model code that I ended up with for my initial
 test. You should use the Skill Builder to create you own.
@@ -133,7 +133,7 @@ git push heroku master
 heroku run mix ecto.migrate
 ```
 ```
-  
+
 ### Basic pages
 
 To publish Alexa skills, you need some basic pages like privacy
@@ -435,7 +435,7 @@ diff --git a/config/dev.exs b/config/dev.exs
 index 6c17696..7e6c037 100644
 --- a/config/dev.exs
 +++ b/config/dev.exs
-@@ -56,3 +56,11 @@ config :twsc_skill, TwscSkill.Repo,
+@@ -56,3 +56,12 @@ config :twsc_skill, TwscSkill.Repo,
    database: "twsc_skill_dev",
    hostname: "localhost",
    pool_size: 10
@@ -447,6 +447,7 @@ index 6c17696..7e6c037 100644
 +  database: "twsc_skill_dev",
 +  hostname: "localhost",
 +  pool_size: 10
++  pool: Ecto.Adapters.SQL.Sandbox
 ```
 
 Note in `prod.exs`, we add the `Oath2Server.Repo` part to ensure
@@ -614,13 +615,13 @@ clear text so I can login on their behalf. Big security no-no, but
 since I can't change TWSC's site, that's how we'll do it.
 
 In addition to TWSC credentials, I'll add name, email and a
-`twsc_skill` password (stored encrypted). This is common good
+`twsc_skill` password (stored as a hash). This is common good
 practice, and also for the case where the user changes their TWSC
 password.
 
 ```sh
 mix phx.gen.html Accounts User users \
-  name:string email:string password:string \
+  name:string email:string password_hash:string \
   twsc_login:string twsc_password:string
 ```
 

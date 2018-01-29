@@ -22,6 +22,7 @@ config :oauth2_server, Oauth2Server.Repo,
   adapter: Ecto.Adapters.Postgres,
   username: "postgres",
   password: "postgres",
-  database: "tradewinds_alexa_dev",
+  database: "twsc_skill_dev",
   hostname: "localhost",
-  pool_size: 10
+  pool_size: 10,
+  pool: Ecto.Adapters.SQL.Sandbox
