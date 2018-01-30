@@ -501,27 +501,30 @@ Get the DSN from Sentry, under Settings/Client Keys (DSN).
 heroku config:set SENTRY_DSN="<sentry dsn>"
 ```
 
-Modify the production config to use this env.
+Modify the config to setup sentry for `:prod` only and use this env.
 
 ```diff
-diff --git a/config/prod.exs b/config/prod.exs
-index ddd2e9c..a2599f8 100644
---- a/config/prod.exs
-+++ b/config/prod.exs
-@@ -77,3 +77,13 @@ config :oauth2_server, Oauth2Server.Repo,
-   url: System.get_env("DATABASE_URL"),
-   pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-   ssl: true
-+
+diff --git a/config/config.exs b/config/config.exs
+index 383eb3b..9166c5c 100644
+--- a/config/config.exs
++++ b/config/config.exs
+@@ -29,6 +29,16 @@ config :oauth2_server, Oauth2Server.Settings,
+ config :alexa_verifier,
+   verifier_client: AlexaVerifier.VerifierClient
+
 +config :sentry,
 +  dsn: System.get_env("SENTRY_DSN"),
-+  environment_name: :prod,
++  environment_name: Mix.env,
 +  enable_source_code_context: true,
 +  root_source_code_path: File.cwd!,
 +  tags: %{
 +    env: "production"
 +  },
 +  included_environments: [:prod]
++
+ # Import environment specific config. This must remain at the bottom
+ # of this file so it overrides the configuration defined above.
+ import_config "#{Mix.env}.exs"
 ```
 
 Add the dependency
@@ -593,6 +596,27 @@ index b5cbc3e..f844c75 100644
 +  end
  end
 ```
+
+and a unit test to make sure that this page causes a 500.
+
+```diff
+diff --git a/test/twsc_skill_web/controllers/page_controller_test.exs b/test/twsc_skill_web/controlle
+index 69f86b4..05e78d7 100644
+--- a/test/twsc_skill_web/controllers/page_controller_test.exs
++++ b/test/twsc_skill_web/controllers/page_controller_test.exs
+@@ -20,4 +20,10 @@ defmodule TwscSkillWeb.PageControllerTest do
+     conn = get conn, "/contact"
+     assert html_response(conn, 200) =~ "Contact"
+   end
++
++  test "GET /test_crash", %{conn: conn} do
++    assert_error_sent 500, fn ->
++      get conn, "/test_crash"
++    end
++  end
+ end
+```
+
 
 ### Create a user model.
 
