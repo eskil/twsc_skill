@@ -20,7 +20,7 @@ defmodule TwscSkill.Mixfile do
   def application do
     [
       mod: {TwscSkill.Application, []},
-      extra_applications: [:sentry, :logger, :runtime_tools]
+      extra_applications: [:sentry, :logger, :runtime_tools, :comeonin]
     ]
   end
 
@@ -42,6 +42,8 @@ defmodule TwscSkill.Mixfile do
       {:gettext, "~> 0.11"},
       {:cowboy, "~> 1.0"},
       {:sentry, "~> 6.0.0"},
+      {:comeonin, "~> 4.0"},
+      {:bcrypt_elixir, "~> 1.0"},
       {:alexa, github: "col/alexa"},
       {:alexa_verifier, github: "eskil/alexa_verifier"},
       {:oauth2_server, github: "eskil/oauth2_server"}

@@ -50,4 +50,9 @@ defmodule TwscSkill.DataCase do
       end)
     end)
   end
+
+  def is_hash(s) do
+    assert String.starts_with?(s, "$2b$12$")
+    assert String.length(s) == 60
+  end
 end

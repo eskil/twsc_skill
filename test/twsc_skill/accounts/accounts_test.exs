@@ -6,9 +6,27 @@ defmodule TwscSkill.AccountsTest do
   describe "users" do
     alias TwscSkill.Accounts.User
 
-    @valid_attrs %{email: "some email", name: "some name", password_hash: "some password hash", twsc_login: "some twsc_login", twsc_password: "some twsc_password"}
-    @update_attrs %{email: "some updated email", name: "some updated name", password_hash: "some updated password hash", twsc_login: "some updated twsc_login", twsc_password: "some updated twsc_password"}
-    @invalid_attrs %{email: nil, name: nil, password_hash: nil, twsc_login: nil, twsc_password: nil}
+    @valid_attrs %{
+      email: "some@email",
+      name: "some name",
+      password: "some password",
+      twsc_login: "some twsc_login",
+      twsc_password: "some twsc_password"
+    }
+    @update_attrs %{
+      email: "some@updated.email",
+      name: "some updated name",
+      password: "some updated password",
+      twsc_login: "some updated twsc_login",
+      twsc_password: "some updated twsc_password"
+    }
+    @invalid_attrs %{
+      email: nil,
+      name: nil,
+      password: nil,
+      twsc_login: nil,
+      twsc_password: nil
+    }
 
     def user_fixture(attrs \\ %{}) do
       {:ok, user} =
@@ -16,7 +34,8 @@ defmodule TwscSkill.AccountsTest do
         |> Enum.into(@valid_attrs)
         |> Accounts.create_user()
 
-      user
+      # Nil out virtual fields
+      %{user| password: nil}
     end
 
     test "list_users/0 returns all users" do
@@ -31,9 +50,9 @@ defmodule TwscSkill.AccountsTest do
 
     test "create_user/1 with valid data creates a user" do
       assert {:ok, %User{} = user} = Accounts.create_user(@valid_attrs)
-      assert user.email == "some email"
+      assert user.email == "some@email"
       assert user.name == "some name"
-      assert user.password == "some password"
+      assert is_hash(user.password_hash)
       assert user.twsc_login == "some twsc_login"
       assert user.twsc_password == "some twsc_password"
     end
@@ -46,9 +65,9 @@ defmodule TwscSkill.AccountsTest do
       user = user_fixture()
       assert {:ok, user} = Accounts.update_user(user, @update_attrs)
       assert %User{} = user
-      assert user.email == "some updated email"
+      assert user.email == "some@updated.email"
       assert user.name == "some updated name"
-      assert user.password == "some updated password"
+      assert is_hash(user.password_hash)
       assert user.twsc_login == "some updated twsc_login"
       assert user.twsc_password == "some updated twsc_password"
     end

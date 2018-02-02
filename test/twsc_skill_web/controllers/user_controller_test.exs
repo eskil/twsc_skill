@@ -3,9 +3,27 @@ defmodule TwscSkillWeb.UserControllerTest do
 
   alias TwscSkill.Accounts
 
-  @create_attrs %{email: "some email", name: "some name", password_hash: "some password_hash", twsc_login: "some twsc_login", twsc_password: "some twsc_password"}
-  @update_attrs %{email: "some updated email", name: "some updated name", password_hash: "some updated password_hash", twsc_login: "some updated twsc_login", twsc_password: "some updated twsc_password"}
-  @invalid_attrs %{email: nil, name: nil, password_hash: nil, twsc_login: nil, twsc_password: nil}
+  @create_attrs %{
+    email: "some@email",
+    name: "some name",
+    password: "some password",
+    twsc_login: "some twsc_login",
+    twsc_password: "some twsc_password"
+  }
+  @update_attrs %{
+    email: "some@updated.email",
+    name: "some updated name",
+    password: "some updated password",
+    twsc_login: "some updated twsc_login",
+    twsc_password: "some updated twsc_password"
+  }
+  @invalid_attrs %{
+    email: nil,
+    name: nil,
+    password_hash: nil,
+    twsc_login: nil,
+    twsc_password: nil
+  }
 
   def fixture(:user) do
     {:ok, user} = Accounts.create_user(@create_attrs)
@@ -60,7 +78,7 @@ defmodule TwscSkillWeb.UserControllerTest do
       assert redirected_to(conn) == user_path(conn, :show, user)
 
       conn = get conn, user_path(conn, :show, user)
-      assert html_response(conn, 200) =~ "some updated email"
+      assert html_response(conn, 200) =~ "some@updated.email"
     end
 
     test "renders errors when data is invalid", %{conn: conn, user: user} do

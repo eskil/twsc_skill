@@ -630,13 +630,19 @@ In addition to TWSC credentials, I'll add name, email and a
 practice, and also for the case where the user changes their TWSC
 password.
 
+We store the password as a hash, but ideally we'd just use a fat
+framework package like
+[coherence](https://github.com/smpallen99/coherence).
+
+
 ```sh
 mix phx.gen.html Accounts User users \
   name:string email:string password_hash:string \
   twsc_login:string twsc_password:string
 ```
 
-This generates most of what we need, so we check in the new files and add the resource to our router.
+This generates most of what we need, so we check in the new files and
+add the resource to our router.
 
 ```diff
 diff --git a/lib/twsc_skill_web/router.ex b/lib/twsc_skill_web/router.ex
@@ -652,4 +658,301 @@ index 8bc8844..93fab63 100644
    end
 
    # Other scopes may use custom stacks.
+```
+
+Since we store the hashed password, we need to go through the hoops of
+handling the clear-text password by hash it when storing. So we need a
+virtual password fields in the user model and a changeset function
+that hashes. Since I want to get to the Alexa skill parts and not
+write yet-another-blog about phoenix auth, we'll speed through this a
+bit.
+
+```diff
+diff --git a/lib/twsc_skill/accounts/user.ex b/lib/twsc_skill/accounts/user.ex
+index 3a99e25..0ad19a4 100644
+--- a/lib/twsc_skill/accounts/user.ex
++++ b/lib/twsc_skill/accounts/user.ex
+@@ -7,6 +7,7 @@ defmodule TwscSkill.Accounts.User do
+   schema "users" do
+     field :email, :string
+     field :name, :string
++    field :password, :string, virtual: true
+     field :password_hash, :string
+     field :twsc_login, :string
+     field :twsc_password, :string
+@@ -14,10 +15,40 @@ defmodule TwscSkill.Accounts.User do
+     timestamps()
+   end
+
++  @required_fields [:email, :twsc_login, :twsc_password]
++
+   @doc false
+   def changeset(%User{} = user, attrs) do
+     user
+     |> cast(attrs, [:name, :email, :password_hash, :twsc_login, :twsc_password])
+-    |> validate_required([:name, :email, :password_hash, :twsc_login, :twsc_password])
++    |> validate_required(@required_fields)
++    |> validate_format(:email, ~r/@/)
++  end
++
++  @doc """
++  Build a changeset for registration.
++  Validates password and ensures it gets hashed.
++  """
++  def registration_changeset(struct, params) do
++    struct
++    |> changeset(params)
++    |> cast(params, [:password])
++    |> validate_required([:password])
++    |> validate_length(:password, min: 6, max: 100)
++    |> hash_password
++  end
++
++  @doc """
++  Adds the hashed password to the changeset.
++  """
++  defp hash_password(changeset) do
++    case changeset do
++      # If it's a valid password, grab (by matching) the password,
++      # change the changeset by inserting the hashed password.
++      %Ecto.Changeset{valid?: true, changes: %{password: password}} ->
++        put_change(changeset, :password_hash, Comeonin.Bcrypt.hashpwsalt(password))
++      # Anything else (eg. not valid), return untouched.
++      _ -> changeset
++    end
+   end
+ end
+```
+
+This uses [comeonin](https://github.com/riverrun/comeonin) with
+bcrypt, so add this to your dependencies.
+
+```diff
+diff --git a/mix.exs b/mix.exs
+index ac8f31f..fa99baa 100644
+--- a/mix.exs
++++ b/mix.exs
+@@ -20,7 +20,7 @@ defmodule TwscSkill.Mixfile do
+   def application do
+     [
+       mod: {TwscSkill.Application, []},
+-      extra_applications: [:sentry, :logger, :runtime_tools]
++      extra_applications: [:sentry, :logger, :runtime_tools, :comeonin]
+     ]
+   end
+
+@@ -42,6 +42,8 @@ defmodule TwscSkill.Mixfile do
+       {:gettext, "~> 0.11"},
+       {:cowboy, "~> 1.0"},
+       {:sentry, "~> 6.0.0"},
++      {:comeonin, "~> 4.0"},
++      {:bcrypt_elixir, "~> 1.0"},
+       {:alexa, github: "col/alexa"},
+       {:alexa_verifier, github: "eskil/alexa_verifier"},
+       {:oauth2_server, github: "eskil/oauth2_server"}
+```
+
+Now we have a `registration_changeset` function that hashes password,
+so we modify out `accounts` module to call this.
+
+```diff
+diff --git a/lib/twsc_skill/accounts/accounts.ex b/lib/twsc_skill/accounts/accounts.ex
+index a3aac5b..e8af2e7 100644
+--- a/lib/twsc_skill/accounts/accounts.ex
++++ b/lib/twsc_skill/accounts/accounts.ex
+@@ -51,7 +51,7 @@ defmodule TwscSkill.Accounts do
+   """
+   def create_user(attrs \\ %{}) do
+     %User{}
+-    |> User.changeset(attrs)
++    |> User.registration_changeset(attrs)
+     |> Repo.insert()
+   end
+```
+
+Finally we need to fix up the generated tests a bit. We've added some
+validation on `email` and `password`, so they have to change, and
+we've made `password_hash` generated from `password`, so we can't have
+assertions on the default "some password_hash" value.
+
+Let's add a `is_hash/1` helper function to our `TwscSkill.DataCase`
+test case.
+
+```diff
+diff --git a/test/support/data_case.ex b/test/support/data_case.ex
+index 7a19e10..4e85ff5 100644
+--- a/test/support/data_case.ex
++++ b/test/support/data_case.ex
+@@ -50,4 +50,9 @@ defmodule TwscSkill.DataCase do
+       end)
+     end)
+   end
++
++  def is_hash(s) do
++    assert String.starts_with?(s, "$2b$12$")
++    assert String.length(s) == 60
++  end
+ end
+```
+
+Put it to use in `AccountsTest`
+
+```diff
+diff --git a/test/twsc_skill/accounts/accounts_test.exs b/test/twsc_skill/accounts/accounts_test.exs
+index cbd6eb7..d8c6f87 100644
+--- a/test/twsc_skill/accounts/accounts_test.exs
++++ b/test/twsc_skill/accounts/accounts_test.exs
+@@ -6,9 +6,27 @@ defmodule TwscSkill.AccountsTest do
+   describe "users" do
+     alias TwscSkill.Accounts.User
+
+-    @valid_attrs %{email: "some email", name: "some name", password_hash: "some password hash", twsc
+_login: "some twsc_login", twsc_password: "some twsc_password"}
+-    @update_attrs %{email: "some updated email", name: "some updated name", password_hash: "some upd
+ated password hash", twsc_login: "some updated twsc_login", twsc_password: "some updated twsc_passwor
+d"}
+-    @invalid_attrs %{email: nil, name: nil, password_hash: nil, twsc_login: nil, twsc_password: nil}
++    @valid_attrs %{
++      email: "some@email",
++      name: "some name",
++      password: "some password",
++      twsc_login: "some twsc_login",
++      twsc_password: "some twsc_password"
++    }
++    @update_attrs %{
++      email: "some@updated.email",
++      name: "some updated name",
++      password: "some updated password",
++      twsc_login: "some updated twsc_login",
++      twsc_password: "some updated twsc_password"
++    }
++    @invalid_attrs %{
++      email: nil,
++      name: nil,
++      password: nil,
++      twsc_login: nil,
++      twsc_password: nil
++    }
+
+     def user_fixture(attrs \\ %{}) do
+       {:ok, user} =
+@@ -16,7 +34,8 @@ defmodule TwscSkill.AccountsTest do
+         |> Enum.into(@valid_attrs)
+         |> Accounts.create_user()
+
+-      user
++      # Nil out virtual fields
++      %{user| password: nil}
+     end
+
+     test "list_users/0 returns all users" do
+@@ -31,9 +50,9 @@ defmodule TwscSkill.AccountsTest do
+
+     test "create_user/1 with valid data creates a user" do
+       assert {:ok, %User{} = user} = Accounts.create_user(@valid_attrs)
+-      assert user.email == "some email"
++      assert user.email == "some@email"
+       assert user.name == "some name"
+-      assert user.password == "some password"
++      assert is_hash(user.password_hash)
+       assert user.twsc_login == "some twsc_login"
+       assert user.twsc_password == "some twsc_password"
+     end
+@@ -46,9 +65,9 @@ defmodule TwscSkill.AccountsTest do
+       user = user_fixture()
+       assert {:ok, user} = Accounts.update_user(user, @update_attrs)
+       assert %User{} = user
+-      assert user.email == "some updated email"
++      assert user.email == "some@updated.email"
+       assert user.name == "some updated name"
+-      assert user.password == "some updated password"
++      assert is_hash(user.password_hash)
+       assert user.twsc_login == "some updated twsc_login"
+       assert user.twsc_password == "some updated twsc_password"
+     end
+```
+
+And `UserControllerTest` just needs to pass a valid password and email.
+
+```diff
+diff --git a/test/twsc_skill_web/controllers/user_controller_test.exs b/test/twsc_skill_web/controllers/user_controller_test.exs
+index 4493753..2bc0700 100644
+--- a/test/twsc_skill_web/controllers/user_controller_test.exs
++++ b/test/twsc_skill_web/controllers/user_controller_test.exs
+@@ -3,9 +3,27 @@ defmodule TwscSkillWeb.UserControllerTest do
+
+   alias TwscSkill.Accounts
+
+-  @create_attrs %{email: "some email", name: "some name", password_hash: "some password_hash", twsc_login: "some twsc_login", twsc_password: "some twsc_password"}
+-  @update_attrs %{email: "some updated email", name: "some updated name", password_hash: "some updated password_hash", twsc_login: "some updated twsc_login", twsc_password: "some updated twsc_password"}
+-  @invalid_attrs %{email: nil, name: nil, password_hash: nil, twsc_login: nil, twsc_password: nil}
++  @create_attrs %{
++    email: "some@email",
++    name: "some name",
++    password: "some password",
++    twsc_login: "some twsc_login",
++    twsc_password: "some twsc_password"
++  }
++  @update_attrs %{
++    email: "some@updated.email",
++    name: "some updated name",
++    password: "some updated password",
++    twsc_login: "some updated twsc_login",
++    twsc_password: "some updated twsc_password"
++  }
++  @invalid_attrs %{
++    email: nil,
++    name: nil,
++    password_hash: nil,
++    twsc_login: nil,
++    twsc_password: nil
++  }
+
+   def fixture(:user) do
+     {:ok, user} = Accounts.create_user(@create_attrs)
+@@ -60,7 +78,7 @@ defmodule TwscSkillWeb.UserControllerTest do
+       assert redirected_to(conn) == user_path(conn, :show, user)
+
+       conn = get conn, user_path(conn, :show, user)
+-      assert html_response(conn, 200) =~ "some updated email"
++      assert html_response(conn, 200) =~ "some@updated.email"
+     end
+
+     test "renders errors when data is invalid", %{conn: conn, user: user} do
+```
+
+Finally for good measure, let's add an index on email
+
+```sh
+mix ecto.gen.migration add_email_index
+```
+
+and modify the generated migration to look like
+
+```elixir
+defmodule TwscSkill.Repo.Migrations.AddEmailIndex do
+  use Ecto.Migration
+
+  def change do
+    create unique_index(:users, [:email])
+  end
+end
+```
+
+finally make the email field unique.
+
+```diff
+diff --git a/lib/twsc_skill/accounts/user.ex b/lib/twsc_skill/accounts/user.ex
+index 0ad19a4..e1101ce 100644
+--- a/lib/twsc_skill/accounts/user.ex
++++ b/lib/twsc_skill/accounts/user.ex
+@@ -6,7 +6,7 @@ defmodule TwscSkill.Accounts.User do
+
+   schema "users" do
+     field :email, :string
+-    field :name, :string
++    field :name, :string, unique: true
+     field :password, :string, virtual: true
+     field :password_hash, :string
+     field :twsc_login, :string
 ```
